@@ -19,6 +19,8 @@ import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 
+import com.massivecraft.factions.entity.UPlayer;
+
 /**
  * @author t3hk0d3 (ChatManager)
  * @author rymate (bChatManager)
@@ -78,6 +80,7 @@ public class UnleashedChatManager extends JavaPlugin {
 
 	private void setupConfig() {
 		File configFile = new File(this.getDataFolder() + File.separator + "config.yml");
+		
 		try {
 			if (!configFile.exists()) {
 				this.saveDefaultConfig();
@@ -85,6 +88,7 @@ public class UnleashedChatManager extends JavaPlugin {
 		} catch (Exception ex) {
 			log.log(Level.SEVERE, null, ex);
 		}
+		
 		this.config = new YamlConfiguration();
 		this.config = YamlConfiguration.loadConfiguration(configFile);
 	}
@@ -94,9 +98,11 @@ public class UnleashedChatManager extends JavaPlugin {
 	 */
 	private boolean setupChat() {
 		RegisteredServiceProvider<Chat> chatProvider = getServer().getServicesManager().getRegistration(net.milkbowl.vault.chat.Chat.class);
+		
 		if (chatProvider != null) {
 			this.chat = chatProvider.getProvider();
 		}
+		
 		log.info("Chat Provider is: "+chatProvider.getProvider().getName());
 
 		return (this.chat != null);
@@ -107,9 +113,11 @@ public class UnleashedChatManager extends JavaPlugin {
 	 */
 	private boolean setupPermissions() {
 		RegisteredServiceProvider<Permission> permsProvider = this.getServer().getServicesManager().getRegistration(net.milkbowl.vault.permission.Permission.class);
+		
 		if(permsProvider != null) {
 			this.permission = permsProvider.getProvider();
 		}
+		
 		log.info("Permissions Provider is: "+permsProvider.getProvider().getName());
 
 		return (this.permission != null);
@@ -124,14 +132,28 @@ public class UnleashedChatManager extends JavaPlugin {
 				.replace("%world", player.getWorld().getName())
 				.replace("%player", player.getName())
 				.replace("%displayname", player.getDisplayName())
-				.replace("%group", this.chat.getPrimaryGroup(player));
+				.replace("%group", this.chat.getPrimaryGroup(player))
+				.replace("%faction", this.getPlayerFaction(player));
+	}
+	
+	private String getPlayerFaction(Player player) {
+		String factionTag = "";
+		
+		if(this.factionsEnabled) {
+			 UPlayer uPlayer = UPlayer.get(player); //Get the Faction Player reference
+			 factionTag = uPlayer.getFactionName()+""+uPlayer.getRole().getPrefix();
+		}
+		
+		return factionTag;
 	}
 
 	private String getPlayerPrefix(Player player) {
 		String prefix = this.chat.getPlayerPrefix(player);
+		
 		if(prefix == null || prefix.equals("") || prefix.isEmpty()) {
 			String group = this.permission.getPrimaryGroup(player);
 			prefix = this.chat.getGroupPrefix(player.getWorld().getName(), group);
+			
 			if(prefix == null || prefix.equals("") || prefix.isEmpty()) {
 				prefix = "";
 			}
@@ -142,9 +164,11 @@ public class UnleashedChatManager extends JavaPlugin {
 
 	private String getPlayerSuffix(Player player){
 		String suffix = this.chat.getPlayerPrefix(player);
+		
 		if(suffix == null || suffix.equals("")  || suffix.isEmpty()){
 			String group = permission.getPrimaryGroup(player);
 			suffix = this.chat.getGroupPrefix(player.getWorld().getName(),group);
+			
 			if(suffix == null || suffix.equals("")  || suffix.isEmpty()){
 				suffix = "";
 			}
@@ -161,14 +185,13 @@ public class UnleashedChatManager extends JavaPlugin {
 		Location playerLocation = sender.getLocation();
 		List<Player> recipients = new LinkedList<Player>();
 		double squaredDistance = Math.pow(range, 2);
+		
 		for (Player recipient : getServer().getOnlinePlayers()) {
-			// Recipient are not from same world
-			if (!recipient.getWorld().equals(sender.getWorld())) {
-				continue;
-			}
-			if (playerLocation.distanceSquared(recipient.getLocation()) > squaredDistance) {
-				continue;
-			}
+			
+			// Recipient are not from same world or in range
+			if (!recipient.getWorld().equals(sender.getWorld()) ||
+					(playerLocation.distanceSquared(recipient.getLocation()) > squaredDistance)) continue;
+			
 			recipients.add(recipient);
 		}
 		return recipients;
