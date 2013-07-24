@@ -10,14 +10,15 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.PluginCommand;
 
 import com.massivecraft.factions.entity.UPlayer;
 
@@ -37,19 +38,28 @@ public class UnleashedChatManager extends JavaPlugin {
 
 	//Internal ChatListener references
 	private ChatListener listener = null;
+	
+	//The CommandExecutor
+	private UnleashedCommandExecutor uce;
 
 	//The config.yml file
 	public YamlConfiguration config = null;
 	
 	//The boolean flag to check to see if Factions is enabled
 	public boolean factionsEnabled = false;
+	
+	//The boolean flag to check to see if we are forcefully overriding the /me command
+	private boolean forceMeCommand = false;
 
 	@Override
 	public void onEnable() {
 		//Setup the Logger
 		log = this.getLogger();
+		
+		//Initialize the Command Executor
+		this.uce = new UnleashedCommandExecutor(this);
 
-		//setup the config
+		//Setup the config
 		this.setupConfig();
 
 		//Chatlistener - can you hear me?
@@ -71,8 +81,41 @@ public class UnleashedChatManager extends JavaPlugin {
 			} else {
 				log.info("Factions "+factions.getDescription().getVersion()+" found, but support not enabled.");
 			}
-		} else {
-			log.info("Factions was not found");
+		}
+		
+		//Set up the commands
+		if(this.config.getBoolean("toggles.control-me")) {
+			if(this.getCommand("me").isRegistered()) {
+				log.info("Command 'me' is registered to "+this.getCommand("me").getPlugin().getName()+", overriding...");
+				//Reflection stuffs!
+				PluginCommand pc = this.getCommand("me");
+				Class<?> clazz = pc.getClass();
+				try {
+					//XXX: This is a damn dirty hack, but I want control of /me
+					Field executor = clazz.getDeclaredField("executor"); //The executor field
+					Field owningPlugin = clazz.getDeclaredField("owningPlugin"); //The owningPlugin field
+					
+					//Set the private access to public
+					executor.setAccessible(true);
+					owningPlugin.setAccessible(true);
+					
+					//Set the fields to point to us
+					executor.set(pc, this);
+					owningPlugin.set(pc, this);
+					
+					//Reset the private access
+					executor.setAccessible(false);
+					owningPlugin.setAccessible(false);
+					
+					//Test to see if the Reflection worked
+					log.info("Command 'me' is now registered to "+this.getCommand("me").getPlugin().getName()+" executor '"+this.getCommand("me").getExecutor().toString()+"'");
+				} catch (Exception e) {
+					log.warning("Unable to override plugin registration! Falling back to forceful override...");
+					this.forceMeCommand = true;
+				}
+			} else {
+				this.getCommand("me").setExecutor(this.uce);
+			}
 		}
 
 		log.info("Enabled Successfully!");
@@ -205,67 +248,5 @@ public class UnleashedChatManager extends JavaPlugin {
 			}
 		}
 		return recipients;
-	}
-
-	@Override
-	//TODO: Fix this horrid hunk of code up
-	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if ((command.getName().equals("me")) && (config.getBoolean("toggles.control-me", true))) {
-			String meFormat = config.getString("formats.me-format", "* %player %message");
-			Double chatRange = config.getDouble("other.chat-range", 100);
-			boolean rangedMode = config.getBoolean("toggles.ranged-mode", false);
-			if (args.length < 1) {
-				sender.sendMessage(ChatColor.RED + "Ya need to type something after it :P");
-				return false;
-			}
-			if (!(sender instanceof Player)) {
-				sender.sendMessage(ChatColor.RED + "You are not an in-game player!");
-				return true;
-			}
-			Player player = (Player) sender;
-			int i;
-			StringBuilder me = new StringBuilder();
-			for (i = 0; i < args.length; i++) {
-				me.append(args[i]);
-				me.append(" ");
-			}
-			String meMessage = me.toString();
-			String message = meFormat;
-			message = colorize(message);
-
-			if (sender.hasPermission("bchatmanager.chat.color")) {
-				meMessage = colorize(meMessage);
-			}
-
-			message = message.replace("%message", meMessage).replace("%displayname", "%1$s");
-			message = this.replacePlayerPlaceholders(player, message);
-
-			if (rangedMode) {
-				List<Player> pl = this.getLocalRecipients(player, message, chatRange);
-				for (int j = 0; j < pl.size(); j++) {
-					pl.get(j).sendMessage(message);
-				}
-				sender.sendMessage(message);
-				System.out.println(message);
-			} else {
-				this.getServer().broadcastMessage(message);
-			}
-			return true;
-		}
-
-		if ((command.getName().equals("ucm"))) {
-			if (!(sender instanceof Player) || sender.hasPermission("bchatmanager.reload")) {
-				getServer().getPluginManager().disablePlugin(this);
-				getServer().getPluginManager().enablePlugin(this);
-				sender.sendMessage(ChatColor.AQUA + "[bChatManager] Plugin reloaded!");
-				return true;
-			}
-
-			if (sender.hasPermission("bchatmanager.reload")) {
-				sender.sendMessage(ChatColor.AQUA + "[bChatManager] Wtf, you can't do this!");
-				return true;
-			}
-		}
-		return true;
 	}
 }
