@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 
+import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -24,6 +25,9 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 
 	//Toggles
 	public boolean toggleControlMe, toggleRangedMode, toggleSpecialFeatures, toggleFactionsSupport, toggleModAsOp;
+	
+	//Internal toggles
+	public boolean skipMeCommand = false;
 
 	//Other things
 	private double chatRange;
@@ -103,31 +107,49 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 			UnleashedChatManager.log.log(Level.SEVERE, null, e);
 		}
 	}
+	
+	private String colorize(String string) {
+		String newString = string; //make a copy of the string so we can preserve the orignal
+		if (newString == null) return "";
+		else return newString.replaceAll("&([a-z0-9])", "\u00A7$1");
+	}
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if(command.getName().equalsIgnoreCase("me") && (this.toggleControlMe)) {
-
+		//Set up the most commonly used fields
+		String temp;
+		Player player;
+		
+		if(command.getName().equalsIgnoreCase("me") && (this.toggleControlMe) && !this.skipMeCommand) {
+			if(!(sender instanceof Player)) {
+				//Something other than a player used this command, don't do anything
+				return true;
+			}
+			
+			player = ((Player)sender); //get the player out of the CommandSender
+			
+			//Length check
+			if(args.length < 1) {
+				player.sendMessage(ChatColor.GRAY+"You need to type something after it :P (/me <emote>)");
+				return true;
+			}
+			
+			StringBuilder me = new StringBuilder();
+			
+			//Rebuild the String from the args
+			for(int i = 0; i < args.length; i++) {
+				me.append(args[i]);
+				me.append(" ");
+			}
+			
+			String meMessage = me.toString();
+			String message = this.colorize(this.meFormat);
+			
+			if(this.plugin.permission.has(player, "ucm.chat.color")) {
+				
+			}
 		}
-		/*if ((command.getName().equals("me")) && (config.getBoolean("toggles.control-me", true))) {
-		String meFormat = config.getString("formats.me-format", "* %player %message");
-		Double chatRange = config.getDouble("other.chat-range", 100);
-		boolean rangedMode = config.getBoolean("toggles.ranged-mode", false);
-		if (args.length < 1) {
-			sender.sendMessage(ChatColor.RED + "Ya need to type something after it :P");
-			return false;
-		}
-		if (!(sender instanceof Player)) {
-			sender.sendMessage(ChatColor.RED + "You are not an in-game player!");
-			return true;
-		}
-		Player player = (Player) sender;
-		int i;
-		StringBuilder me = new StringBuilder();
-		for (i = 0; i < args.length; i++) {
-			me.append(args[i]);
-			me.append(" ");
-		}
+		/*
 		String meMessage = me.toString();
 		String message = meFormat;
 		message = colorize(message);
@@ -224,10 +246,10 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		}
 
 		message = this.plugin.replacePlayerPlaceholders(player, message);
-		message = this.plugin.colorize(message);
+		message = this.colorize(message);
 
 		if (player.hasPermission("bchatmanager.color")) {
-			chatMessage = this.plugin.colorize(chatMessage);
+			chatMessage = this.colorize(chatMessage);
 		}
 
 		message = message.replace("%message", chatMessage);

@@ -29,7 +29,7 @@ public class UnleashedChatManager extends JavaPlugin {
 
 	//The Vault Variables
 	private Chat chat = null;
-	private Permission permission = null;
+	public Permission permission = null;
 
 	//The ChatModifier
 	private UnleashedChatModifier ucm = null;
@@ -37,23 +37,20 @@ public class UnleashedChatManager extends JavaPlugin {
 	//The boolean flag to check to see if Factions is enabled
 	public boolean factionsEnabled = false;
 
-	//The boolean flag to check to see if we are forcefully overriding the /me command
-	public boolean forceMeCommand = false;
-
 	@Override
 	public void onEnable() {
 		//Setup the Logger
 		log = this.getLogger();
-
-		//Register the ChatModifier
-		this.ucm = new UnleashedChatModifier(this);
-		this.getServer().getPluginManager().registerEvents(this.ucm, this);
 
 		//Vault hook checks
 		if(!this.setupChat() || !this.setupPermissions()) {
 			log.severe("Errors in setting up Vault variables! Disabling...");
 			this.getServer().getPluginManager().disablePlugin(this);
 		}
+
+		//Register the ChatModifier
+		this.ucm = new UnleashedChatModifier(this);
+		this.getServer().getPluginManager().registerEvents(this.ucm, this);
 
 		//Factions Check
 		Plugin factions = null;
@@ -93,8 +90,8 @@ public class UnleashedChatManager extends JavaPlugin {
 					//Test to see if the Reflection worked
 					log.info("Command 'me' is now registered to "+this.getCommand("me").getPlugin().getName()+" executor '"+this.getCommand("me").getExecutor().toString()+"'");
 				} catch (Exception e) {
-					log.warning("Unable to override plugin registration! Falling back to forceful override...");
-					this.forceMeCommand = true;
+					log.warning("Unable to override plugin registration! Releasing control of 'me' Command...");
+					this.ucm.skipMeCommand = true;
 				}
 			} else {
 				this.getCommand("me").setExecutor(this.ucm);
@@ -185,11 +182,6 @@ public class UnleashedChatManager extends JavaPlugin {
 			}
 		}
 		return suffix;
-	}
-
-	public String colorize(String string) {
-		if (string == null) return "";
-		else return string.replaceAll("&([a-z0-9])", "\u00A7$1");
 	}
 
 	public List<Player> getLocalRecipients(Player sender, String message, double range) {
