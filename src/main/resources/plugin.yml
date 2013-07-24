@@ -1,0 +1,20 @@
+name: UnleashedChatManager
+main: com.hackhalo2.chat.UnleashedChatManager
+version: "${project.version}"
+softdepends: [Factions]
+author: HACKhalo2
+commands:
+  me:
+    description: "the emote command"
+    usage: "/me <String...>"
+    permission: ucm.command.me
+permissions:
+  ucm.*:
+    description: Allow the use of all UnleashedChatManager features
+    default: op
+    children:
+      ucm.command.me: true
+  ucm.command.*:
+    description: Allow the use of all UnleashedChatManager commands
+    children:
+      ucm.command.me: true
