@@ -14,11 +14,32 @@ permissions:
     default: op
     children:
       ucm.command.me: true
+      ucm.command.reload: true
       ucm.spy: true
+      ucm.chat.mod: true
+      ucm.chat.atmessage: true
+      ucm.chat.color: true
   ucm.spy:
-    descriptiom: Allow the player to see all chat
+    description: Allow the player to see all chat
     default: op
   ucm.command.*:
     description: Allow the use of all UnleashedChatManager commands
     children:
       ucm.command.me: true
+      ucm.command.reload: true
+  ucm.command.me:
+    description: Allow the use of the '/me' command
+  ucm.command.reload:
+    description: Allow the use of the '/ucm reload' command
+  ucm.chat.*:
+    description: Allow the use of all UnleashedChatManager chat features
+    children:
+      ucm.chat.mod: true
+      ucm.chat.message: true
+      ucm.chat.color: true
+  ucm.chat.mod:
+    description: Allow the use of the chat moderation features
+  ucm.chat.atmessage:
+    description: Allow the use of the @<player> feature (only works if toggles.special-features is set to true in the config.yml)
+  ucm.chat.color:
+    description: Allows the use of color codes in chat messages

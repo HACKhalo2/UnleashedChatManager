@@ -134,6 +134,11 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 			
 			player = ((Player)sender); //get the player out of the CommandSender
 			
+			if(!this.plugin.permission.has(player, "ucm.command.me")) {
+				player.sendMessage(ChatColor.RED+"You don't have the permission to perform this command");
+				return true;
+			}
+			
 			//Length check
 			if(args.length < 1) {
 				player.sendMessage(ChatColor.GRAY+"You need to type something after it :P (/me <emote>)");
@@ -171,7 +176,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		}
 		
 		if(command.getName().equalsIgnoreCase("ucm")) { //The main command
-			if(args[0].equalsIgnoreCase("reload") && this.plugin.permission.has(sender, "ucm.reload")) { //ucm reload
+			if(args[0].equalsIgnoreCase("reload") && this.plugin.permission.has(sender, "ucm.command.reload")) { //ucm reload
 				this.loadConfig();
 				sender.sendMessage(ChatColor.AQUA+"UCM Config Reloaded");
 				return true;
@@ -188,7 +193,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 
 		Player player = event.getPlayer();
 
-		String message = this.messageFormat;
+		String message;
 		String chatMessage = event.getMessage();
 
 		if (this.toggleRangedMode) {
@@ -196,14 +201,14 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 			event.getRecipients().clear();
 			event.getRecipients().addAll(this.plugin.getLocalRecipients(player, message, this.chatRange));
 			event.getRecipients().addAll(this.plugin.getSpies());
-		}
+		} else message = this.messageFormat;
 
 		if (this.toggleSpecialFeatures) {
-			if (chatMessage.startsWith("@") && player.hasPermission("ucm.chat.message")) {
+			if (chatMessage.startsWith("@") && player.hasPermission("ucm.chat.atmessage")) {
 				chatMessage = chatMessage.substring(1);
 				String[] messageSplit = chatMessage.split(" ");
 				Player reciever = this.plugin.getServer().getPlayer(messageSplit[0]);
-				if (messageSplit[0] == "ops") {
+				if (messageSplit[0].equalsIgnoreCase("ops") || messageSplit[0].equalsIgnoreCase("mods")) {
 					chatMessage = chatMessage.replaceFirst(messageSplit[0], "");
 					chatMessage = chatMessage.replaceAll("%reciever", messageSplit[0]);
 
@@ -211,9 +216,8 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 					event.getRecipients().clear();
 					event.getRecipients().add(player);
 					
-					//TODO: Add in Mod-as-Op here
-					for (Player recipient : this.plugin.getServer().getOnlinePlayers()) {
-						if (recipient.isOp()) {
+					for (Player recipient : Bukkit.getServer().getOnlinePlayers()) {
+						if (recipient.isOp() || this.plugin.permission.has(player, "ucm.chat.mod")) {
 							recipients.add(recipient);
 						}
 					}
@@ -239,7 +243,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		message = ParserLib.replacePlayerPlaceholders(player, message);
 		message = this.colorize(message);
 
-		if (player.hasPermission("umc.chat.color")) chatMessage = this.colorize(chatMessage);
+		if (this.plugin.permission.has(player, "ucm.chat.color")) chatMessage = this.colorize(chatMessage);
 		else this.stripColors(chatMessage);
 
 		message = message.replace("%message", chatMessage);
