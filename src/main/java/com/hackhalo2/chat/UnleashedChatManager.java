@@ -15,8 +15,6 @@ import java.util.logging.Logger;
 import org.bukkit.Location;
 import org.bukkit.command.PluginCommand;
 
-import com.massivecraft.factions.entity.UPlayer;
-
 /**
  * @author t3hk0d3 (ChatManager)
  * @author rymate (bChatManager)
@@ -35,7 +33,7 @@ public class UnleashedChatManager extends JavaPlugin {
 	private UnleashedChatModifier ucm = null;
 
 	//The boolean flag to check to see if Factions is enabled
-	public boolean factionsEnabled = false;
+	public static boolean factionsEnabled = false;
 
 	@Override
 	public void onEnable() {
@@ -48,7 +46,10 @@ public class UnleashedChatManager extends JavaPlugin {
 			this.getServer().getPluginManager().disablePlugin(this);
 		}
 
-		//Register the ChatModifier
+		//Setup the ParserLib
+		ParserLib.setup(this.permission, this.chat);
+		
+		//Setup and register the ChatModifier
 		this.ucm = new UnleashedChatModifier(this);
 		this.getServer().getPluginManager().registerEvents(this.ucm, this);
 
@@ -57,7 +58,7 @@ public class UnleashedChatManager extends JavaPlugin {
 		if((factions = this.getServer().getPluginManager().getPlugin("Factions")) != null) {
 			if(this.ucm.toggleFactionsSupport) {
 				log.info("Factions "+factions.getDescription().getVersion()+" found, enabling support...");
-				this.factionsEnabled = true;
+				factionsEnabled = true;
 			} else {
 				log.info("Factions "+factions.getDescription().getVersion()+" found, but support not enabled.");
 			}
@@ -100,6 +101,17 @@ public class UnleashedChatManager extends JavaPlugin {
 
 		log.info("Enabled Successfully!");
 	}
+	
+	@Override
+	public void onDisable() {
+		this.ucm.saveConfig(); //Save the config
+		ParserLib.cleanup(); //Clean up the ParserLib
+		this.chat = null;
+		this.permission = null;
+		this.ucm = null;
+		log.info("Plugin Disabled");
+		log = null;
+	}
 
 	/*
 	 * Code to setup the Chat variable in Vault. Allows me to hook to all the prefix plugins.
@@ -134,56 +146,6 @@ public class UnleashedChatManager extends JavaPlugin {
 	//
 	//  Begin methods from Functions.java
 	//
-	public String replacePlayerPlaceholders(Player player, String format) {
-		return format.replace("%prefix", this.getPlayerPrefix(player))
-				.replace("%suffix", this.getPlayerSuffix(player))
-				.replace("%world", player.getWorld().getName())
-				.replace("%player", player.getName())
-				.replace("%displayname", player.getDisplayName())
-				.replace("%group", this.chat.getPrimaryGroup(player))
-				.replace("%faction", this.getPlayerFaction(player));
-	}
-
-	private String getPlayerFaction(Player player) {
-		String factionTag = "";
-
-		if(this.factionsEnabled) {
-			UPlayer uPlayer = UPlayer.get(player); //Get the Faction Player reference
-			factionTag = uPlayer.getFactionName()+""+uPlayer.getRole().getPrefix();
-		}
-
-		return factionTag;
-	}
-
-	private String getPlayerPrefix(Player player) {
-		String prefix = this.chat.getPlayerPrefix(player);
-
-		if(prefix == null || prefix.equals("") || prefix.isEmpty()) {
-			String group = this.permission.getPrimaryGroup(player);
-			prefix = this.chat.getGroupPrefix(player.getWorld().getName(), group);
-
-			if(prefix == null || prefix.equals("") || prefix.isEmpty()) {
-				prefix = "";
-			}
-		}
-
-		return prefix;
-	}
-
-	private String getPlayerSuffix(Player player){
-		String suffix = this.chat.getPlayerPrefix(player);
-
-		if(suffix == null || suffix.equals("")  || suffix.isEmpty()){
-			String group = permission.getPrimaryGroup(player);
-			suffix = this.chat.getGroupPrefix(player.getWorld().getName(),group);
-
-			if(suffix == null || suffix.equals("")  || suffix.isEmpty()){
-				suffix = "";
-			}
-		}
-		return suffix;
-	}
-
 	public List<Player> getLocalRecipients(Player sender, String message, double range) {
 		Location playerLocation = sender.getLocation();
 		List<Player> recipients = new LinkedList<Player>();

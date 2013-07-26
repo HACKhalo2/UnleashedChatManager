@@ -14,6 +14,10 @@ permissions:
     default: op
     children:
       ucm.command.me: true
+      ucm.spy: true
+  ucm.spy:
+    descriptiom: Allow the player to see all chat
+    default: op
   ucm.command.*:
     description: Allow the use of all UnleashedChatManager commands
     children:

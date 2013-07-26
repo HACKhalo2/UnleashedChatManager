@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
 
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -42,24 +43,6 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		//load the config
 		this.configFile = new File(this.plugin.getDataFolder()+File.separator+"config.yml");
 		this.loadConfig();
-
-		/* Cache the yml options */
-		//Strings
-		this.meFormat = this.config.getString("formats.me-format", "* %player %message");
-		this.messageFormat = this.config.getString("formats.message-format", "%prefix %player: &f%message");
-		this.localMessageFormat = this.config.getString("formats.local-message-format", "[LOCAL] %prefix %player: &f%message");
-		this.opMessageFormat = this.config.getString("formats.op-message-format", "[OP] %prefix %player: &f%message");
-		this.personalMessageFormat = this.config.getString("formats.personal-message-format", "[MSG] [%player -> %reciever] &f%message");
-
-		//Booleans
-		this.toggleControlMe = this.config.getBoolean("toggles.control-me", true);
-		this.toggleRangedMode = this.config.getBoolean("toggles.range-mode", false);
-		this.toggleSpecialFeatures = this.config.getBoolean("toggles.special-features", true);
-		this.toggleFactionsSupport = this.config.getBoolean("toggles.factions-support", true);
-		this.toggleModAsOp = this.config.getBoolean("toggles.mod-as-op", true);
-
-		//Other
-		this.chatRange = this.config.getDouble("other.chat-range", 100D);
 	}
 
 	private void loadConfig() {
@@ -73,9 +56,27 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		}
 
 		this.config = YamlConfiguration.loadConfiguration(this.configFile);
+		
+		/* Cache the yml options */
+		//Strings
+		this.meFormat = this.config.getString("formats.me-format", "* %player %message");
+		this.messageFormat = this.config.getString("formats.message-format", "%prefix %player: &f%message");
+		this.localMessageFormat = this.config.getString("formats.local-message-format", "[LOCAL] %prefix %player: &f%message");
+		this.opMessageFormat = this.config.getString("formats.op-message-format", "[OP] %prefix %player: &f%message");
+		this.personalMessageFormat = this.config.getString("formats.personal-message-format", "[MSG] [%player -> %reciever] &f%message");
+
+		//Booleans
+		this.toggleControlMe = this.config.getBoolean("toggles.control-me", true);
+		this.toggleRangedMode = this.config.getBoolean("toggles.range-mode", false);
+		this.toggleSpecialFeatures = this.config.getBoolean("toggles.special-features", true);
+		this.toggleFactionsSupport = this.config.getBoolean("toggles.factions-support", false);
+		this.toggleModAsOp = this.config.getBoolean("toggles.mod-as-op", true);
+
+		//Other
+		this.chatRange = this.config.getDouble("other.chat-range", 100D);
 	}
 
-	private void saveConfig() {
+	public void saveConfig() {
 		UnleashedChatManager.log.info("Saving Yaml Configuration...");
 
 		//Set the values for the yaml file
@@ -109,15 +110,20 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 	}
 	
 	private String colorize(String string) {
-		String newString = string; //make a copy of the string so we can preserve the orignal
+		String newString = string; //make a copy of the string so we can preserve the original
 		if (newString == null) return "";
 		else return newString.replaceAll("&([a-z0-9])", "\u00A7$1");
+	}
+	
+	private String stripColors(String string) {
+		String newString = string; //make a copy of the string so we can preserve the original
+		if(newString == null) return "";
+		else return newString.replaceAll("&([a-z0-9])", "");
 	}
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 		//Set up the most commonly used fields
-		String temp;
 		Player player;
 		
 		if(command.getName().equalsIgnoreCase("me") && (this.toggleControlMe) && !this.skipMeCommand) {
@@ -142,59 +148,43 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 				me.append(" ");
 			}
 			
-			String meMessage = me.toString();
+			String meMessage = "";
 			String message = this.colorize(this.meFormat);
 			
-			if(this.plugin.permission.has(player, "ucm.chat.color")) {
-				
+			if(this.plugin.permission.has(player, "ucm.chat.color")) meMessage = this.colorize(me.toString());
+			else meMessage = this.stripColors(me.toString());
+			
+			message = message.replace("%message", meMessage).replace("%displayname", "%1$s");
+			message = ParserLib.replacePlayerPlaceholders(player, message);
+			
+			if (this.toggleRangedMode) {
+				List<Player> pl = this.plugin.getLocalRecipients(player, message, this.chatRange);
+				for (int j = 0; j < pl.size(); j++) {
+					pl.get(j).sendMessage(message);
+				}
+				sender.sendMessage(message);
+				UnleashedChatManager.log.info(message);
+			} else {
+				Bukkit.getServer().broadcastMessage(message);
 			}
-		}
-		/*
-		String meMessage = me.toString();
-		String message = meFormat;
-		message = colorize(message);
-
-		if (sender.hasPermission("bchatmanager.chat.color")) {
-			meMessage = colorize(meMessage);
-		}
-
-		message = message.replace("%message", meMessage).replace("%displayname", "%1$s");
-		message = this.replacePlayerPlaceholders(player, message);
-
-		if (rangedMode) {
-			List<Player> pl = this.getLocalRecipients(player, message, chatRange);
-			for (int j = 0; j < pl.size(); j++) {
-				pl.get(j).sendMessage(message);
-			}
-			sender.sendMessage(message);
-			System.out.println(message);
-		} else {
-			this.getServer().broadcastMessage(message);
-		}
-		return true;
-	}
-
-	if ((command.getName().equals("ucm"))) {
-		if (!(sender instanceof Player) || sender.hasPermission("bchatmanager.reload")) {
-			getServer().getPluginManager().disablePlugin(this);
-			getServer().getPluginManager().enablePlugin(this);
-			sender.sendMessage(ChatColor.AQUA + "[bChatManager] Plugin reloaded!");
 			return true;
 		}
-
-		if (sender.hasPermission("bchatmanager.reload")) {
-			sender.sendMessage(ChatColor.AQUA + "[bChatManager] Wtf, you can't do this!");
-			return true;
+		
+		if(command.getName().equalsIgnoreCase("ucm")) { //The main command
+			if(args[0].equalsIgnoreCase("reload") && this.plugin.permission.has(sender, "ucm.reload")) { //ucm reload
+				this.loadConfig();
+				sender.sendMessage(ChatColor.AQUA+"UCM Config Reloaded");
+				return true;
+			}
+			
 		}
-	}*/
-		return false;
+		
+		return true; //We should never get here, but just in case we do...
 	}
 
 	@EventHandler(priority = EventPriority.NORMAL)
 	public void onPlayerChat(AsyncPlayerChatEvent event) {
-		if (event.isCancelled()) {
-			return;
-		}
+		if (event.isCancelled()) return;
 
 		Player player = event.getPlayer();
 
@@ -209,7 +199,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		}
 
 		if (this.toggleSpecialFeatures) {
-			if (chatMessage.startsWith("@") && player.hasPermission("bchatmanager.chat.message")) {
+			if (chatMessage.startsWith("@") && player.hasPermission("ucm.chat.message")) {
 				chatMessage = chatMessage.substring(1);
 				String[] messageSplit = chatMessage.split(" ");
 				Player reciever = this.plugin.getServer().getPlayer(messageSplit[0]);
@@ -220,7 +210,8 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 					List<Player> recipients = new LinkedList<Player>();
 					event.getRecipients().clear();
 					event.getRecipients().add(player);
-
+					
+					//TODO: Add in Mod-as-Op here
 					for (Player recipient : this.plugin.getServer().getOnlinePlayers()) {
 						if (recipient.isOp()) {
 							recipients.add(recipient);
@@ -245,12 +236,11 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 			}
 		}
 
-		message = this.plugin.replacePlayerPlaceholders(player, message);
+		message = ParserLib.replacePlayerPlaceholders(player, message);
 		message = this.colorize(message);
 
-		if (player.hasPermission("bchatmanager.color")) {
-			chatMessage = this.colorize(chatMessage);
-		}
+		if (player.hasPermission("umc.chat.color")) chatMessage = this.colorize(chatMessage);
+		else this.stripColors(chatMessage);
 
 		message = message.replace("%message", chatMessage);
 

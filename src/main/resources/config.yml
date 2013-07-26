@@ -1,0 +1,15 @@
+#Valid Format Tags: %prefix %player %displayname %message %reciever %faction
+formats: 
+    message-format: '%prefix %player: &f%message'
+    local-message-format: '[LOCAL] %prefix %player: &f%message'
+    personal-message-format: '[MSG] [%player -> %reciever] &f%message'
+    op-message-format: '&c[OPS] %player: &f%message'
+    me-format: '* %player %message'
+toggles:
+    control-me: true
+    ranged-mode: false
+    special-features: true
+    factions-support: false
+    mod-as-op: true
+other:
+    chat-range: 100.0
