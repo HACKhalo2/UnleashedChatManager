@@ -5,14 +5,18 @@ softdepends: [Factions]
 author: HACKhalo2
 commands:
   me:
-    description: "the emote command"
-    usage: "/me <String...>"
+    description: the emote command
+    usage: /me <String...>
     permission: ucm.command.me
+  ucm:
+    description: The main UnleashedChatManager command
+    usage: /ucm <subcommand> <args>
 permissions:
   ucm.*:
     description: Allow the use of all UnleashedChatManager features
     default: op
     children:
+      ucm.command: true
       ucm.command.me: true
       ucm.command.reload: true
       ucm.spy: true
@@ -35,7 +39,7 @@ permissions:
     description: Allow the use of all UnleashedChatManager chat features
     children:
       ucm.chat.mod: true
-      ucm.chat.message: true
+      ucm.chat.atmessage: true
       ucm.chat.color: true
   ucm.chat.mod:
     description: Allow the use of the chat moderation features

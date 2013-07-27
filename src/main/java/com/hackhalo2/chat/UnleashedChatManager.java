@@ -106,7 +106,7 @@ public class UnleashedChatManager extends JavaPlugin {
 	
 	@Override
 	public void onDisable() {
-		this.ucm.saveConfig(); //Save the config
+		if(this.ucm.wasModified()) this.ucm.saveConfig(); //Save the config if it was modified in game
 		ParserLib.cleanup(); //Clean up the ParserLib
 		this.chat = null;
 		this.permission = null;

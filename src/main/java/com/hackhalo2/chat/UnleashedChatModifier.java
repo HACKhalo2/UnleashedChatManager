@@ -36,6 +36,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 	//The YAML configuration
 	private YamlConfiguration config = new YamlConfiguration();
 	private final File configFile;
+	private boolean modified = false;
 
 	public UnleashedChatModifier(UnleashedChatManager plugin) {
 		this.plugin = plugin; //Set the plugin reference
@@ -44,8 +45,13 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		this.configFile = new File(this.plugin.getDataFolder()+File.separator+"config.yml");
 		this.loadConfig();
 	}
+	
+	public boolean wasModified() {
+		return this.modified;
+	}
 
 	private void loadConfig() {
+		this.modified = false; //make sure to reset this before loading the config from disk
 		UnleashedChatManager.log.info("Loading Yaml Configuration...");
 		try {
 			if (!this.configFile.exists()) {
@@ -67,7 +73,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 
 		//Booleans
 		this.toggleControlMe = this.config.getBoolean("toggles.control-me", true);
-		this.toggleRangedMode = this.config.getBoolean("toggles.range-mode", false);
+		this.toggleRangedMode = this.config.getBoolean("toggles.ranged-mode", false);
 		this.toggleSpecialFeatures = this.config.getBoolean("toggles.special-features", true);
 		this.toggleFactionsSupport = this.config.getBoolean("toggles.factions-support", false);
 		this.toggleModAsOp = this.config.getBoolean("toggles.mod-as-op", true);
@@ -81,6 +87,10 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 
 		//Set the values for the yaml file
 		try {
+			
+			//Info header
+			this.config.set("", "#Valid Format Tags: %prefix %player %displayname %message %reciever %faction");
+			
 			//File Version
 			this.config.set("version.major", 1);
 			this.config.set("version.minor", 0);
@@ -94,7 +104,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 
 			//Booleans
 			this.config.set("toggles.control-me", this.toggleControlMe);
-			this.config.set("toggles.range-mode", this.toggleRangedMode);
+			this.config.set("toggles.ranged-mode", this.toggleRangedMode);
 			this.config.set("toggles.special-features", this.toggleSpecialFeatures);
 			this.config.set("toggles.factions-support", this.toggleFactionsSupport);
 			this.config.set("toggles.mod-as-op", this.toggleModAsOp);
@@ -187,9 +197,11 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		return true; //We should never get here, but just in case we do...
 	}
 
-	@EventHandler(priority = EventPriority.NORMAL)
+	@EventHandler(priority = EventPriority.LOWEST)
 	public void onPlayerChat(AsyncPlayerChatEvent event) {
+		UnleashedChatManager.log.log(Level.FINE, "OnPlayerChat called!");
 		if (event.isCancelled()) return;
+		UnleashedChatManager.log.log(Level.FINE, "OnPlayerChat was not cancelled");
 
 		Player player = event.getPlayer();
 
@@ -209,6 +221,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 				String[] messageSplit = chatMessage.split(" ");
 				Player reciever = this.plugin.getServer().getPlayer(messageSplit[0]);
 				if (messageSplit[0].equalsIgnoreCase("ops") || messageSplit[0].equalsIgnoreCase("mods")) {
+					message = this.personalMessageFormat;
 					chatMessage = chatMessage.replaceFirst(messageSplit[0], "");
 					chatMessage = chatMessage.replaceAll("%reciever", messageSplit[0]);
 
@@ -223,7 +236,6 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 					}
 
 					event.getRecipients().addAll(recipients);
-					message = this.personalMessageFormat;
 				} else if (reciever == null) {
 					player.sendMessage("This player isn't online or you just typed the @ symbol! Ignoring.");
 					event.setCancelled(true);
@@ -235,7 +247,6 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 					event.getRecipients().add(player);
 					event.getRecipients().add(reciever);
 					event.getRecipients().addAll(this.plugin.getSpies());
-					message = this.personalMessageFormat;
 				}
 			}
 		}
@@ -245,7 +256,8 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 
 		if (this.plugin.permission.has(player, "ucm.chat.color")) chatMessage = this.colorize(chatMessage);
 		else this.stripColors(chatMessage);
-
+		
+		UnleashedChatManager.log.log(Level.FINE, "Chat Format is : "+message);
 		message = message.replace("%message", chatMessage);
 
 		event.setFormat(message);
