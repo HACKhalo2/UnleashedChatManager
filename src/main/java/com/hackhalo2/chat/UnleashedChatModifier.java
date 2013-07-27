@@ -20,15 +20,20 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 public class UnleashedChatModifier implements CommandExecutor, Listener {
 
 	private final UnleashedChatManager plugin;
+	
+	//Internal version numbers
+	private final int versionMajor = 1;
+	private final int versionMinor = 1;
 
 	//General Chat message formats
 	private String meFormat, messageFormat, localMessageFormat, opMessageFormat, personalMessageFormat;
 
 	//Toggles
-	public boolean toggleControlMe, toggleRangedMode, toggleSpecialFeatures, toggleFactionsSupport, toggleModAsOp;
+	public boolean toggleControlMe, toggleRangedMode, toggleSpecialFeatures, toggleFactionsSupport, toggleModAsOp, toggleChannelSupport;
 	
 	//Internal toggles
 	public boolean skipMeCommand = false;
+	private boolean modified = false, upgrade = false;
 
 	//Other things
 	private double chatRange;
@@ -36,7 +41,6 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 	//The YAML configuration
 	private YamlConfiguration config = new YamlConfiguration();
 	private final File configFile;
-	private boolean modified = false;
 
 	public UnleashedChatModifier(UnleashedChatManager plugin) {
 		this.plugin = plugin; //Set the plugin reference
@@ -47,7 +51,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 	}
 	
 	public boolean wasModified() {
-		return this.modified;
+		return this.modified || this.upgrade;
 	}
 
 	private void loadConfig() {
@@ -66,10 +70,10 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		/* Cache the yml options */
 		//Strings
 		this.meFormat = this.config.getString("formats.me-format", "* %player %message");
-		this.messageFormat = this.config.getString("formats.message-format", "%prefix %player: &f%message");
-		this.localMessageFormat = this.config.getString("formats.local-message-format", "[LOCAL] %prefix %player: &f%message");
-		this.opMessageFormat = this.config.getString("formats.op-message-format", "[OP] %prefix %player: &f%message");
-		this.personalMessageFormat = this.config.getString("formats.personal-message-format", "[MSG] [%player -> %reciever] &f%message");
+		this.messageFormat = this.config.getString("formats.message-format", "%prefix%player: &f%message");
+		this.localMessageFormat = this.config.getString("formats.local-message-format", "[L] %prefix%player: &f%message");
+		this.opMessageFormat = this.config.getString("formats.op-message-format", "[M] %prefix%player: &2%message");
+		this.personalMessageFormat = this.config.getString("formats.personal-message-format", "[%player -> %reciever] &f%message");
 
 		//Booleans
 		this.toggleControlMe = this.config.getBoolean("toggles.control-me", true);
@@ -77,9 +81,16 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 		this.toggleSpecialFeatures = this.config.getBoolean("toggles.special-features", true);
 		this.toggleFactionsSupport = this.config.getBoolean("toggles.factions-support", false);
 		this.toggleModAsOp = this.config.getBoolean("toggles.mod-as-op", true);
+		this.toggleChannelSupport = this.config.getBoolean("toggle.channel-support", false);
 
 		//Other
 		this.chatRange = this.config.getDouble("other.chat-range", 100D);
+		
+		//config version check
+		int major = this.config.getInt("version.major");
+		int minor = this.config.getInt("version.minor");
+		
+		if(major <= this.versionMajor && minor < this.versionMinor) this.upgrade = true; //mark the file to be upgraded on the next save
 	}
 
 	public void saveConfig() {
@@ -90,10 +101,11 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 			
 			//Info header
 			this.config.set("", "#Valid Format Tags: %prefix %player %displayname %message %reciever %faction");
+			this.config.set("", "");
 			
 			//File Version
-			this.config.set("version.major", 1);
-			this.config.set("version.minor", 0);
+			this.config.set("version.major", this.versionMajor);
+			this.config.set("version.minor", this.versionMinor);
 
 			//Strings
 			this.config.set("formats.me-format", this.meFormat);
@@ -108,6 +120,7 @@ public class UnleashedChatModifier implements CommandExecutor, Listener {
 			this.config.set("toggles.special-features", this.toggleSpecialFeatures);
 			this.config.set("toggles.factions-support", this.toggleFactionsSupport);
 			this.config.set("toggles.mod-as-op", this.toggleModAsOp);
+			this.config.set("toggle.channel-support", this.toggleChannelSupport);
 
 			//Other
 			this.config.set("other.chat-range", this.chatRange);

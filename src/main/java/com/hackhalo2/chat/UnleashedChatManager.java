@@ -8,12 +8,15 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
 import java.lang.reflect.Field;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
 import org.bukkit.Location;
 import org.bukkit.command.PluginCommand;
+
+import com.hackhalo2.chat.channels.ChannelManager;
 
 /**
  * @author t3hk0d3 (ChatManager)
@@ -63,6 +66,10 @@ public class UnleashedChatManager extends JavaPlugin {
 				log.info("Factions "+factions.getDescription().getVersion()+" found, but support not enabled.");
 			}
 		}
+		
+		//Set up the ChannelManager
+		ChannelManager.setCacheFile(new File(this.getDataFolder()+File.separator+"cache.yml"));
+		ChannelManager.setup();
 
 		//Set up the commands
 		if(this.ucm.toggleControlMe) {
