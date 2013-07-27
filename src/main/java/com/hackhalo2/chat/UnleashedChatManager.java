@@ -66,8 +66,8 @@ public class UnleashedChatManager extends JavaPlugin {
 
 		//Set up the commands
 		if(this.ucm.toggleControlMe) {
-			if(this.getCommand("me").isRegistered()) {
-				log.info("Command 'me' is registered to "+this.getCommand("me").getPlugin().getName()+", overriding...");
+			if(this.getCommand("me").isRegistered() && this.getCommand("me").getPlugin() != this) {
+				log.info("Command 'me' is registered to '"+this.getCommand("me").getPlugin().getName()+"', overriding...");
 				//Reflection stuffs!
 				PluginCommand pc = this.getCommand("me");
 				Class<?> clazz = pc.getClass();
@@ -89,7 +89,7 @@ public class UnleashedChatManager extends JavaPlugin {
 					owningPlugin.setAccessible(false);
 
 					//Test to see if the Reflection worked
-					log.info("Command 'me' is now registered to "+this.getCommand("me").getPlugin().getName()+" executor '"+this.getCommand("me").getExecutor().toString()+"'");
+					log.info("Command 'me' is now registered to '"+this.getCommand("me").getPlugin().getName()+"', executor '"+this.getCommand("me").getExecutor().toString()+"'");
 				} catch (Exception e) {
 					log.warning("Unable to override plugin registration! Releasing control of 'me' Command...");
 					this.ucm.skipMeCommand = true;
@@ -98,6 +98,8 @@ public class UnleashedChatManager extends JavaPlugin {
 				this.getCommand("me").setExecutor(this.ucm);
 			}
 		}
+		
+		this.getCommand("ucm").setExecutor(this.ucm);
 
 		log.info("Enabled Successfully!");
 	}
